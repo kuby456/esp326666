@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Netzach Safe Control</title>
+
+<style>
+body{background:#0b1020;color:#fff;font-family:system-ui;text-align:center;padding:20px}
+button{font-size:20px;padding:15px 20px;border:0;border-radius:14px;margin:10px}
+.start{background:#22c55e}
+.fire{background:#ef4444;color:white}
+</style>
+</head>
+
+<body>
+
+<h2>שליטה בכספת (דרך האינטרנט)</h2>
+
+<button class="start" onclick="start(600)">⏱ 10 דקות</button>
+<button class="start" onclick="start(3600)">⏱ שעה</button>
+
+<br>
+
+<button class="fire" onclick="fire()">🔓 פתח כספת</button>
+
+<script>
+const SUPABASE_URL = "https://xjtkgravwxhdhvrijjft.supabase.co";
+const API_KEY = "sb_publishable_Q3Y43jrRDl3LYpT5iPsCgw_88J7c1kZ";
+
+async function send(cmd, value){
+  await fetch(SUPABASE_URL + "/rest/v1/esp_cmd?id=eq.1", {
+    method: "PATCH",
+    headers: {
+      "apikey": API_KEY,
+      "Authorization": "Bearer " + API_KEY,
+      "Content-Type": "application/json",
+      "Prefer": "return=minimal"
+    },
+    body: JSON.stringify({
+      cmd: cmd,
+      value: value,
+      updated_at: new Date().toISOString()
+    })
+  });
+}
+
+function start(sec){ send("start", sec); }
+function fire(){ send("fire", 1); }
+</script>
+
+</body>
+</html>
