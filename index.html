@@ -269,20 +269,6 @@ button{
 const SB_URL = "https://xjtkgravwxhdhvrijjft.supabase.co";
 const API_KEY = "sb_publishable_Q3Y43jrRDl3LYpT5iPsCgw_88J7c1kZ";
 
-/* ===== DEBUG BOX ===== */
-let dbg;
-window.addEventListener("load", ()=>{
-  dbg = document.createElement("div");
-  dbg.style.cssText =
-    "background:#200; color:#fca5a5; padding:8px; margin:10px; border-radius:8px; font-size:12px; white-space:pre-wrap";
-  dbg.textContent = "DEBUG:\n";
-  document.body.prepend(dbg);
-});
-function logErr(t){
-  console.error(t);
-  if(dbg) dbg.textContent += t + "\n";
-}
-
 /* ===== SUPABASE API ===== */
 
 async function getStatus(){
