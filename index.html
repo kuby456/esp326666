@@ -1,39 +1,374 @@
 <!doctype html>
 <html lang="he" dir="rtl">
 <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>בודק שעה...</title>
+  <style>
+    body{
+      margin:0; font-family: system-ui, Arial;
+      background:#0b1020; color:#fff;
+      display:flex; min-height:100vh; align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .card{
+      max-width:520px; width:100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      text-align:center;
+    }
+    h1{ margin:0 0 10px; font-size:22px; }
+    .msg{ opacity:0.9; line-height:1.5; font-size:15px; }
+    .big{ font-size:18px; font-weight:800; margin-top:12px; }
+    .btn{
+      display:inline-block;
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:#60a5fa;
+      color:#071a33;
+      font-weight:900;
+      text-decoration:none;
+    }
+    .warn{ color:#fca5a5; font-weight:800; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>בודק שעה מהאינטרנט…</h1>
+    <div class="msg" id="msg">
+      ממתין לסנכרון זמן (NTP).<br/>
+      אם אין אינטרנט, הטיימר חסום כדי לא לעבוד עם שעה לא נכונה.
+    </div>
+    <div class="big" id="clock">--:--:--</div>
+  </div>
+
+<script>
+async function api(path){
+  const r = await fetch(path, {cache:"no-store"});
+  return await r.json();
+}
+
+async function tick(){
+  try{
+    const t = await api('/time');
+
+    if(t.timeReady){
+      document.getElementById('msg').innerHTML =
+        '✅ יש שעה מדויקת! מעביר אותך לטיימר…';
+      document.getElementById('clock').textContent = t.now_hms || '';
+      setTimeout(()=>location.href='/timer', 800);
+    } else {
+      document.getElementById('msg').innerHTML =
+        '<span class="warn">⛔ עדיין אין שעה.</span><br/>הדף חסום עד שיש סנכרון זמן.';
+      document.getElementById('clock').textContent = '--:--:--';
+    }
+  }catch(e){
+    document.getElementById('msg').innerHTML =
+      '<span class="warn">⛔ שגיאה בחיבור לשרת.</span>';
+  }
+}
+
+
+setInterval(tick, 1000);
+tick();
+</script>
+</body>
+</html>
+)HTML";
+
+const char PAGE[] PROGMEM = R"HTML(
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Netzach Safe Control</title>
+<title>Netzach Safe Timer</title>
 
 <style>
-body{background:#0b1020;color:#fff;font-family:system-ui;text-align:center;padding:20px}
-button{font-size:20px;padding:15px 20px;border:0;border-radius:14px;margin:10px}
-.start{background:#22c55e}
-.fire{background:#ef4444;color:white}
+body{
+  margin:0; font-family: system-ui, Arial;
+  background:#0b1020; color:#fff;
+}
+.wrap{ max-width:520px; margin:0 auto; padding:16px; }
+
+.card{
+  background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:18px;
+  padding:16px;
+  margin:12px 0;
+  box-shadow:0 10px 30px rgba(0,0,0,0.25);
+}
+
+h1{ font-size:20px; margin:0 0 10px; }
+
+.big{
+  font-size:48px; font-weight:900; text-align:center; padding:10px 0;
+}
+
+.status{
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:14px; opacity:0.9;
+}
+
+.dot{ width:10px; height:10px; border-radius:50%; background:#999; }
+.dot.on{ background:#22c55e; box-shadow:0 0 18px rgba(34,197,94,0.8);}
+.dot.off{ background:#ef4444; box-shadow:0 0 18px rgba(239,68,68,0.8);}
+
+.row{ display:flex; gap:10px; flex-wrap:wrap; }
+
+.pill{
+  flex:1; min-width:150px;
+  padding:12px; border-radius:14px;
+  background: rgba(0,0,0,0.25);
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+.label{ font-size:13px; opacity:0.8; }
+.value{ font-size:22px; font-weight:800; }
+
+.stat .value{ font-size:26px; }
+.stat .sub{ font-size:12px; opacity:0.7; margin-top:4px; }
+
+.timeSelect{
+  flex:1; padding:10px; font-size:18px;
+  border-radius:10px; border:2px solid #22c55e;
+  background: rgba(0,0,0,0.25); color:#fff;
+}
+
+.btns{ display:flex; gap:10px; flex-wrap:wrap; }
+button{
+  flex:1; min-width:150px;
+  border:0; border-radius:14px;
+  padding:14px; font-size:18px; font-weight:900;
+}
+.start{ background:#22c55e; color:#08210f; }
+.stop{ background:#ef4444; color:#2a0606; }
+
+.hint{ font-size:13px; opacity:0.8; line-height:1.4; }
+
+.logList div{
+  padding:6px 0;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  font-size:14px;
+}
+.confirmBg{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.7);
+  display:flex; align-items:center; justify-content:center;
+  z-index:999;
+}
+
+.confirmCard{
+  background:#0b1020;
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:18px;
+  padding:18px;
+  max-width:320px;
+  width:90%;
+  text-align:center;
+  box-shadow:0 10px 40px rgba(0,0,0,0.6);
+}
+
 </style>
 </head>
 
 <body>
+<div class="wrap">
 
-<h2>שליטה בכספת (דרך האינטרנט)</h2>
+<!-- ===== STATUS ===== -->
+<div class="card">
+  <div class="status">
+    <div><b>Netzach Safe</b> • <span id="runText">טוען...</span></div>
+    <div class="dot" id="dot"></div>
+  </div>
+  <div class="big" id="remaining">--:--:--</div>
+  <div class="hint" id="hint">טוען נתונים…</div>
+</div>
 
-<button class="start" onclick="start(600)">⏱ 10 דקות</button>
-<button class="start" onclick="start(3600)">⏱ שעה</button>
+<!-- ===== INFO ===== -->
+<div class="card">
+<h1>מידע</h1>
+<div class="row">
 
-<br>
+<div class="pill">
+  <div class="label">זמן שנבחר</div>
+  <div class="value" id="nextDur">--:--:--</div>
+</div>
 
-<button class="fire" onclick="fire()">🔓 פתח כספת</button>
+<div style="width:100%;">
+
+<div style="display:flex; gap:8px; font-size:13px; opacity:0.8; margin-bottom:4px;">
+  <div style="flex:1; text-align:center;">שעות</div>
+  <div style="flex:1; text-align:center;">דקות</div>
+  <div style="flex:1; text-align:center;">שניות</div>
+</div>
+
+<div style="display:flex; gap:8px;">
+
+<select id="hours" class="timeSelect">
+<option value="0">0</option><option value="1">1</option><option value="2">2</option>
+<option value="3">3</option><option value="4">4</option><option value="5">5</option>
+<option value="6">6</option><option value="7">7</option><option value="8">8</option>
+<option value="9">9</option><option value="10">10</option><option value="11">11</option>
+<option value="12">12</option><option value="13">13</option><option value="14">14</option>
+<option value="15">15</option><option value="16">16</option><option value="17">17</option>
+<option value="18">18</option><option value="19">19</option><option value="20">20</option>
+<option value="21">21</option><option value="22">22</option><option value="23">23</option>
+<option value="24">24</option><option value="25">25</option><option value="26">26</option>
+<option value="27">27</option><option value="28">28</option><option value="29">29</option>
+<option value="30">30</option><option value="31">31</option><option value="32">32</option>
+<option value="33">33</option><option value="34">34</option><option value="35">35</option>
+<option value="36">36</option><option value="37">37</option><option value="38">38</option>
+<option value="39">39</option><option value="40">40</option><option value="41">41</option>
+<option value="42">42</option><option value="43">43</option><option value="44">44</option>
+<option value="45">45</option><option value="46">46</option><option value="47">47</option>
+<option value="48">48</option>
+</select>
+
+<select id="minutes" class="timeSelect">
+<option value="0">00</option><option value="1">01</option><option value="2">02</option>
+<option value="3">03</option><option value="4">04</option><option value="5">05</option>
+<option value="6">06</option><option value="7">07</option><option value="8">08</option>
+<option value="9">09</option><option value="10">10</option><option value="11">11</option>
+<option value="12">12</option><option value="13">13</option><option value="14">14</option>
+<option value="15">15</option><option value="16">16</option><option value="17">17</option>
+<option value="18">18</option><option value="19">19</option><option value="20">20</option>
+<option value="21">21</option><option value="22">22</option><option value="23">23</option>
+<option value="24">24</option><option value="25">25</option><option value="26">26</option>
+<option value="27">27</option><option value="28">28</option><option value="29">29</option>
+<option value="30">30</option><option value="31">31</option><option value="32">32</option>
+<option value="33">33</option><option value="34">34</option><option value="35">35</option>
+<option value="36">36</option><option value="37">37</option><option value="38">38</option>
+<option value="39">39</option><option value="40">40</option><option value="41">41</option>
+<option value="42">42</option><option value="43">43</option><option value="44">44</option>
+<option value="45">45</option><option value="46">46</option><option value="47">47</option>
+<option value="48">48</option><option value="49">49</option><option value="50">50</option>
+<option value="51">51</option><option value="52">52</option><option value="53">53</option>
+<option value="54">54</option><option value="55">55</option><option value="56">56</option>
+<option value="57">57</option><option value="58">58</option><option value="59">59</option>
+</select>
+
+<select id="seconds" class="timeSelect">
+<option value="0">00</option><option value="1">01</option><option value="2">02</option>
+<option value="3">03</option><option value="4">04</option><option value="5">05</option>
+<option value="6">06</option><option value="7">07</option><option value="8">08</option>
+<option value="9">09</option><option value="10">10</option><option value="11">11</option>
+<option value="12">12</option><option value="13">13</option><option value="14">14</option>
+<option value="15">15</option><option value="16">16</option><option value="17">17</option>
+<option value="18">18</option><option value="19">19</option><option value="20">20</option>
+<option value="21">21</option><option value="22">22</option><option value="23">23</option>
+<option value="24">24</option><option value="25">25</option><option value="26">26</option>
+<option value="27">27</option><option value="28">28</option><option value="29">29</option>
+<option value="30">30</option><option value="31">31</option><option value="32">32</option>
+<option value="33">33</option><option value="34">34</option><option value="35">35</option>
+<option value="36">36</option><option value="37">37</option><option value="38">38</option>
+<option value="39">39</option><option value="40">40</option><option value="41">41</option>
+<option value="42">42</option><option value="43">43</option><option value="44">44</option>
+<option value="45">45</option><option value="46">46</option><option value="47">47</option>
+<option value="48">48</option><option value="49">49</option><option value="50">50</option>
+<option value="51">51</option><option value="52">52</option><option value="53">53</option>
+<option value="54">54</option><option value="55">55</option><option value="56">56</option>
+<option value="57">57</option><option value="58">58</option><option value="59">59</option>
+</select>
+
+</div>
+</div>
+
+<div class="pill">
+  <div class="label">סך זמן מצטבר</div>
+  <div class="value" id="totalOn">--:--:--</div>
+</div>
+
+</div>
+</div>
+<!-- ===== CONTROL ===== -->
+<div class="card">
+<h1>שליטה</h1>
+<div class="btns">
+<button class="start" onclick="doStart()">אישור / התחל</button>
+<button id="fireBtn" class="stop" onclick="doFire()">פתח כספת</button>
+</div>
+<div class="hint" style="margin-top:10px;">
+• אחרי התחלה אי אפשר לעצור עד שהטיימר נגמר.<br>
+• מקסימום זמן: 48 שעות.
+</div>
+</div>
+</div>
+<!-- ===== STATS ===== -->
+<div class="card">
+<h1>סטטיסטיקה</h1>
+<div class="row">
+
+<div class="pill stat">
+<div class="label">היום</div>
+<div class="value" id="todayCnt">0</div>
+<div class="sub">אתמול: <span id="yestCnt">0</span></div>
+</div>
+
+<div class="pill stat">
+<div class="label">השבוע</div>
+<div class="value" id="weekCnt">0</div>
+<div class="sub">שבוע שעבר: <span id="lastWeekCnt">0</span></div>
+</div>
+
+<div class="pill stat">
+<div class="label">החודש</div>
+<div class="value" id="moneyMonth">₪0</div>
+<div class="sub">סיגריות: <span id="monthCnt">0</span></div>
+</div>
+
+</div>
+</div>
+
+<!-- ===== LOGS ===== -->
+<div class="card">
+<h1>טיימרים אחרונים</h1>
+<div id="logList" class="logList">אין נתונים עדיין</div>
+</div>
+
+
+<!-- ===== CONFIRM MODAL ===== -->
+<div id="confirmBox" class="confirmBg" style="display:none;">
+  <div class="confirmCard">
+    <div style="font-size:18px; font-weight:900; margin-bottom:8px;">
+      אתה בטוח שאתה רוצה להפעיל טיימר ל־
+    </div>
+    <div id="confirmTime" style="font-size:34px; font-weight:900; margin:10px 0;">
+      00:00:00
+    </div>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button class="start" onclick="confirmStart()">כן, הפעל</button>
+      <button class="stop" onclick="closeConfirm()">ביטול</button>
+    </div>
+  </div>
+</div>
 
 <script>
-const SUPABASE_URL = "https://xjtkgravwxhdhvrijjft.supabase.co";
+const SB_URL = "https://xjtkgravwxhdhvrijjft.supabase.co";
 const API_KEY = "sb_publishable_Q3Y43jrRDl3LYpT5iPsCgw_88J7c1kZ";
 
+/* ===== SUPABASE API ===== */
+
+async function getStatus(){
+  const r = await fetch(
+    SB_URL + "/rest/v1/esp_status?id=eq.1&select=*",
+    { headers:{ apikey:API_KEY, Authorization:"Bearer "+API_KEY } }
+  );
+  const j = await r.json();
+  return j[0];
+}
+
 async function send(cmd, value){
-  await fetch(SUPABASE_URL + "/rest/v1/esp_cmd?id=eq.1", {
+  await fetch(SB_URL + "/rest/v1/esp_cmd?id=eq.1", {
     method: "PATCH",
     headers: {
-      "apikey": API_KEY,
-      "Authorization": "Bearer " + API_KEY,
+      apikey: API_KEY,
+      Authorization: "Bearer " + API_KEY,
       "Content-Type": "application/json",
       "Prefer": "return=minimal"
     },
@@ -45,9 +380,88 @@ async function send(cmd, value){
   });
 }
 
-function start(sec){ send("start", sec); }
-function fire(){ send("fire", 1); }
+/* ===== UI ===== */
+
+let pendingSeconds = 0;
+
+function doStart(){
+  const h=+hours.value, m=+minutes.value, s=+seconds.value;
+  const total=h*3600+m*60+s;
+  if(total < 1) return;
+
+  pendingSeconds = total;
+
+  confirmTime.textContent =
+    String(h).padStart(2,'0') + ':' +
+    String(m).padStart(2,'0') + ':' +
+    String(s).padStart(2,'0');
+
+  confirmBox.style.display='flex';
+  document.querySelector('.wrap').style.pointerEvents='none';
+}
+
+function closeConfirm(){
+  confirmBox.style.display='none';
+  document.querySelector('.wrap').style.pointerEvents='auto';
+  pendingSeconds=0;
+}
+
+async function confirmStart(){
+  if(pendingSeconds<1) return;
+  confirmBox.style.display='none';
+  document.querySelector('.wrap').style.pointerEvents='auto';
+  await send("start", pendingSeconds);
+  pendingSeconds=0;
+}
+
+async function doFire(){ await send("fire",1); }
+
+function setDot(on){ dot.className='dot '+(on?'on':'off'); }
+
+function render(st){
+  if(!st) return;
+
+  remaining.textContent = st.remaining_hms;
+  nextDur.textContent   = st.selected_hms;
+  totalOn.textContent   = st.total_on_hms;
+
+  runText.textContent = st.running ? 'רץ עכשיו' : 'ממתין';
+  setDot(!st.running);
+
+  hint.textContent = st.running ? 'הטיימר רץ' : 'בחר זמן והתחל';
+
+  todayCnt.textContent    = st.today;
+  yestCnt.textContent     = st.yesterday;
+  weekCnt.textContent     = st.week;
+  lastWeekCnt.textContent = st.lastWeek;
+  monthCnt.textContent    = st.month;
+  moneyMonth.textContent  = '₪ ' + st.money;
+
+  logList.innerHTML='';
+  if(st.logs && st.logs.length){
+    st.logs.slice().reverse().forEach(l=>{
+      const d=new Date(l.t*1000);
+      const t=d.getHours().toString().padStart(2,'0')+':'+
+              d.getMinutes().toString().padStart(2,'0');
+      const dur=new Date(l.d*1000).toISOString().substr(11,8);
+      const div=document.createElement('div');
+      div.textContent='🕒 '+t+' — '+dur;
+      logList.appendChild(div);
+    });
+  }else logList.textContent='אין נתונים עדיין';
+
+  fireBtn.disabled = st.running;
+  fireBtn.style.opacity = st.running?'0.4':'1';
+}
+
+async function refresh(){
+  try{ render(await getStatus()); }catch(e){}
+}
+
+setInterval(refresh,2000);
+refresh();
 </script>
+
 
 </body>
 </html>
