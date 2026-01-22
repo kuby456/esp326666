@@ -269,38 +269,75 @@ button{
 const SB_URL = "https://xjtkgravwxhdhvrijjft.supabase.co";
 const API_KEY = "sb_publishable_Q3Y43jrRDl3LYpT5iPsCgw_88J7c1kZ";
 
+/* ===== DEBUG BOX ===== */
+let dbg;
+window.addEventListener("load", ()=>{
+  dbg = document.createElement("div");
+  dbg.style.cssText =
+    "background:#200; color:#fca5a5; padding:8px; margin:10px; border-radius:8px; font-size:12px; white-space:pre-wrap";
+  dbg.textContent = "DEBUG:\n";
+  document.body.prepend(dbg);
+});
+function logErr(t){
+  console.error(t);
+  if(dbg) dbg.textContent += t + "\n";
+}
+
 /* ===== SUPABASE API ===== */
 
 async function getStatus(){
-  const r = await fetch(
-    SB_URL + "/rest/v1/esp_status?id=eq.1&select=*",
-    { headers:{ apikey:API_KEY, Authorization:"Bearer "+API_KEY } }
-  );
-  const j = await r.json();
-  return j[0];
+  try{
+    const r = await fetch(
+      SB_URL + "/rest/v1/esp_status?id=eq.1&select=*",
+      { headers:{ apikey:API_KEY, Authorization:"Bearer "+API_KEY } }
+    );
+
+    if(!r.ok){
+      const tx = await r.text();
+      logErr("GET STATUS ERR " + r.status + ":\n" + tx);
+      return null;
+    }
+
+    const j = await r.json();
+    return j[0];
+
+  }catch(e){
+    logErr("GET STATUS FETCH FAIL: " + e);
+    return null;
+  }
 }
 
 async function send(cmd, value){
-  await fetch(SB_URL + "/rest/v1/esp_cmd?id=eq.1", {
-    method: "PATCH",
-    headers: {
-      apikey: API_KEY,
-      Authorization: "Bearer " + API_KEY,
-      "Content-Type": "application/json",
-      "Prefer": "return=minimal"
-    },
-    body: JSON.stringify({
-      cmd: cmd,
-      value: value,
-      updated_at: new Date().toISOString()
-    })
-  });
+  try{
+    const r = await fetch(SB_URL + "/rest/v1/esp_cmd?id=eq.1", {
+      method: "PATCH",
+      headers: {
+        apikey: API_KEY,
+        Authorization: "Bearer " + API_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        cmd: cmd,
+        value: value,
+        updated_at: new Date().toISOString()
+      })
+    });
+
+    if(!r.ok){
+      const tx = await r.text();
+      logErr("SEND CMD ERR " + r.status + ":\n" + tx);
+    }
+
+  }catch(e){
+    logErr("SEND CMD FETCH FAIL: " + e);
+  }
 }
 
 /* ===== UI ===== */
 
 let pendingSeconds = 0;
-let localRemain = 0;   // ⏱️ ספירה מקומית
+let localRemain = 0;
 
 function doStart(){
   const h=+hours.value, m=+minutes.value, s=+seconds.value;
@@ -336,7 +373,6 @@ async function doFire(){ await send("fire",1); }
 
 function setDot(on){ dot.className='dot '+(on?'on':'off'); }
 
-/* ===== format seconds to HH:MM:SS ===== */
 function format(sec){
   if(sec < 0) sec = 0;
   const h = Math.floor(sec/3600);
@@ -348,9 +384,11 @@ function format(sec){
 }
 
 function render(st){
-  if(!st) return;
+  if(!st){
+    hint.textContent = "אין חיבור ל-Supabase";
+    return;
+  }
 
-  // ⏱️ קובעים בסיס חדש לספירה מקומית
   if(typeof st.remaining_sec === "number"){
     localRemain = st.remaining_sec;
     remaining.textContent = format(localRemain);
@@ -362,7 +400,7 @@ function render(st){
   totalOn.textContent   = st.total_on_hms;
 
   runText.textContent = st.running ? 'רץ עכשיו' : 'ממתין';
-  setDot(!st.running);
+  setDot(st.running);
 
   hint.textContent = st.running ? 'הטיימר רץ' : 'בחר זמן והתחל';
 
@@ -390,7 +428,7 @@ function render(st){
   fireBtn.style.opacity = st.running?'0.4':'1';
 }
 
-/* ===== local countdown every second ===== */
+/* ===== local countdown ===== */
 setInterval(()=>{
   if(localRemain > 0){
     localRemain--;
@@ -398,14 +436,16 @@ setInterval(()=>{
   }
 },1000);
 
-/* ===== refresh from Supabase ===== */
+/* ===== refresh ===== */
 async function refresh(){
-  try{ render(await getStatus()); }catch(e){}
+  const st = await getStatus();
+  render(st);
 }
 
 setInterval(refresh,2000);
 refresh();
 </script>
+
 
 
 
