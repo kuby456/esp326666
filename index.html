@@ -300,6 +300,7 @@ async function send(cmd, value){
 /* ===== UI ===== */
 
 let pendingSeconds = 0;
+let localRemain = 0;   // ⏱️ ספירה מקומית
 
 function doStart(){
   const h=+hours.value, m=+minutes.value, s=+seconds.value;
@@ -335,10 +336,28 @@ async function doFire(){ await send("fire",1); }
 
 function setDot(on){ dot.className='dot '+(on?'on':'off'); }
 
+/* ===== format seconds to HH:MM:SS ===== */
+function format(sec){
+  if(sec < 0) sec = 0;
+  const h = Math.floor(sec/3600);
+  const m = Math.floor((sec%3600)/60);
+  const s = sec%60;
+  return String(h).padStart(2,'0')+':' +
+         String(m).padStart(2,'0')+':' +
+         String(s).padStart(2,'0');
+}
+
 function render(st){
   if(!st) return;
 
-  remaining.textContent = st.remaining_hms;
+  // ⏱️ קובעים בסיס חדש לספירה מקומית
+  if(typeof st.remaining_sec === "number"){
+    localRemain = st.remaining_sec;
+    remaining.textContent = format(localRemain);
+  } else {
+    remaining.textContent = st.remaining_hms || "--:--:--";
+  }
+
   nextDur.textContent   = st.selected_hms;
   totalOn.textContent   = st.total_on_hms;
 
@@ -371,6 +390,15 @@ function render(st){
   fireBtn.style.opacity = st.running?'0.4':'1';
 }
 
+/* ===== local countdown every second ===== */
+setInterval(()=>{
+  if(localRemain > 0){
+    localRemain--;
+    remaining.textContent = format(localRemain);
+  }
+},1000);
+
+/* ===== refresh from Supabase ===== */
 async function refresh(){
   try{ render(await getStatus()); }catch(e){}
 }
@@ -378,6 +406,7 @@ async function refresh(){
 setInterval(refresh,2000);
 refresh();
 </script>
+
 
 
 </body>
