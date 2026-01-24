@@ -18,6 +18,7 @@ body{
   border-radius:18px;
   padding:16px;
   margin:12px 0;
+  text-align: center;
   box-shadow:0 10px 30px rgba(0,0,0,0.25);
 }
 
@@ -33,8 +34,8 @@ h1{ font-size:20px; margin:0 0 10px; }
 }
 
 .dot{ width:10px; height:10px; border-radius:50%; background:#999; }
-.dot.on{ background:#22c55e; box-shadow:0 0 18px rgba(34,197,94,0.8);}
-.dot.off{ background:#ef4444; box-shadow:0 0 18px rgba(239,68,68,0.8);}
+.dot.on{ background:#ef4444; box-shadow:0 0 18px rgba(34,197,94,0.8);}
+.dot.off{ background:#22c55e; box-shadow:0 0 18px rgba(239,68,68,0.8);}
 
 .row{ display:flex; gap:10px; flex-wrap:wrap; }
 
@@ -132,49 +133,236 @@ button{
   gap:10px;
   margin-top:16px;
 }
+
 .drog{
-    margin: 0 auto 30px;
+    margin: 10px auto 10px;
     display: flex;
     justify-content: center;
+align-items: left;
     color:white;
     background-color: rgba(60, 82, 107, 0.527);
 }
+
+.pill {
+justify-content: center;
+text-align: center;
+}
+
+/* wrapper */
+.cta-wrapper {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+}
+
+/* כפתור ראשי */
+.start {
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  background: linear-gradient(180deg, #00c853 0%, #009624 100%); /* ירוק מתאים לכפתור הוספה */
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  cursor: pointer;
+  width: 100%;
+  max-width: 220px;
+  text-align: center;
+  line-height: 1;
+  direction: rtl; /* מתאים לטקסט בעברית */
+}
+
+/* הובר ואינטראקציות */
+.start:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+.start:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+  opacity: 0.98;
+}
+
+/* מיקום פנימי באמצעות מקש או קורא מסך */
+.start:focus-visible {
+  outline: 3px solid rgba(0, 200, 83, 0.22);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+/* מצב מנוטרל */
+.start[disabled],
+.start.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+
+/* עבור משתמשים המעדיפים 'פחות תנועה' */
+@media (prefers-reduced-motion: reduce) {
+  .start {
+    transition: none;
+  }
+}
+
+
+.fancy-btn{
+  --bg1: #ff78189a;   /* צבעים לדוגמה — אפשר לשנות */
+  --bg2: #af002c80;
+  background: linear-gradient(90deg,var(--bg1),var(--bg2));
+  color: #fff;
+  padding: 12px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(175,0,45,0.22), inset 0 -2px 0 rgba(255,255,255,0.06);
+  transition: transform .15s ease, box-shadow .18s ease, filter .12s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+ width: 10px;
+  text-align: center;
+  white-space: nowrap;
+
+}
+
+/* אפקט הובר ומגע */
+.fancy-btn:hover{
+  transform: translateY(-4px);
+  box-shadow: 0 18px 36px rgba(175,0,45,0.28);
+  filter: brightness(1.04);
+}
+
+.fancy-btn:active{
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+}
+
+/* נגישות — מיקוד באמצעות מקלדת */
+.fancy-btn:focus{
+  outline: 3px solid rgba(255,255,255,0.16);
+  outline-offset: 4px;
+}
+
+.timerBox{
+  position: relative;
+  cursor: pointer;
+}
+
+.barWrap{
+  width:70%;
+  height:26px;
+  background:rgba(255,255,255,0.12);
+  overflow:hidden;
+  margin:12px auto;
+  position:relative;
+  border-radius: 10px;
+  border: solid 2px rgb(22, 24, 143);
+  box-shadow: 0 7px 15px #1a19199a;
+}
+
+.barFill{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,#22c55e,#4ade80);
+  transition: width .4s linear;
+}
+
+.barText{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  font-size:14px;
+  color:#3e69f8;
+}
+
+.hidden{
+  display:none;
+}
+
 </style>
 </head>
 
 <body>
 <div class="wrap">
 
+
 <!-- ===== STATUS ===== -->
 <div class="card">
- <div class="status">
-  <div>
-    <b>Netzach Safe</b> • <span id="runText">טוען...</span><br>
-    <span id="todayLine" style="font-size:12px; opacity:0.75;">--</span>
-  </div>
 
-  <div style="display:flex; align-items:center; gap:10px;">
-    <button onclick="manualRefresh()" 
-            style="background:#334155;color:#fff;border-radius:10px;padding:6px 10px;font-size:14px;">
-      🔄 רענן
-    </button>
+  <div class="status">
+    <div>
+      <b>Netzach Safe</b> • <span id="runText">טוען...</span><br>
+      <span id="todayLine" style="font-size:12px; opacity:0.75;">--</span>
+    </div>
+
     <div class="dot" id="dot"></div>
   </div>
-</div>
+
+<div id="timerBox" class="timerBox" onclick="toggleTimerView()">
 
   <div class="big" id="remaining">--:--:--</div>
-  <div class="hint" id="hint">טוען נתונים…</div>
+
+  <div id="barWrap" class="barWrap hidden">
+    <div id="barFill" class="barFill"></div>
+    <div id="barText" class="barText">0%</div>
+  </div>
+
 </div>
+  <div class="hint" id="hint">טוען נתונים…</div>
+
+  <!-- כפתור רענון למטה -->
+  <div style="margin-top:14px; text-align:center;">
+    <button onclick="manualRefresh()"
+      style="
+        background:#334155;
+        color:#fff;
+        border-radius:12px;
+        padding:8px 16px;
+        font-size:20px;
+        font-weight:800;
+        padding: 15px 30px;
+        width: 70%;
+      ">
+      🔄 רענן נתונים
+    </button>
+  </div>
+
+</div>
+
 
 <!-- ===== INFO ===== -->
 <div class="card">
 <h1>מידע</h1>
 <div class="row">
 
-<div class="pill">
-  <div class="label">זמן הטיימר האחרון </div>
-  <div class="value" id="nextDur">--:--:--</div>
+<div class="pill" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+
+  <div>
+    <div class="label">זמן הטיימר האחרון</div>
+    <div class="value" id="nextDur">--:--:--</div>
+  </div>
+
+  <div>
+    <div class="label">שעת סיום טיימר</div>
+    <div class="value" id="endTime">--:--</div>
+  </div>
+
 </div>
+
+
 
 <div style="width:100%;">
 
@@ -270,51 +458,50 @@ button{
 <button id="fireBtn" class="stop" onclick="doFire()">פתח כספת</button>
 </div>
 <hr style="
-  width:95%;
+  width:100%;
   border:none;
-  height:4px;
-  background:linear-gradient(90deg, #ef4444a2, #22c55e85);
+  height:2px;
+  background:#b2b4b385;
   margin: 50px auto;
   border-radius:4px;
 ">
 
 <button class="drog" onclick="location.href='index2.html'">🚨 SOS</button>
 
-<div class="hint" style="margin-top:10px;">
+<div class="hint" style="margin-top:50px;">
 • אחרי התחלה אי אפשר לעצור עד שהטיימר נגמר.<br>
 • מקסימום זמן: 48 שעות.
 </div>
 </div>
 </div>
+
 <!-- ===== STATS ===== -->
 <div class="card">
-<h1>סטטיסטיקה</h1>
-<div class="row">
+  <h1>סטטיסטיקה</h1>
 
-<div class="pill stat">
-<div class="label">היום</div>
-<div class="value" id="todayCnt">0</div>
-<div class="sub">אתמול: <span id="yestCnt">0</span></div>
-</div>
+  <div class="row">
 
-<div class="pill stat">
-<div class="label">השבוע</div>
-<div class="value" id="weekCnt">0</div>
-<div class="sub">שבוע שעבר: <span id="lastWeekCnt">0</span></div>
-</div>
+    <div class="pill stat">
+      <div class="label">היום</div>
+      <div class="value" id="todayCnt">0</div>
+      <div class="sub">אתמול: <span id="yestCnt">0</span></div>
+    </div>
 
-<div class="pill stat">
-<div class="label">החודש</div>
-<div class="value" id="moneyMonth">₪0</div>
-<div class="sub">סיגריות: <span id="monthCnt">0</span></div>
-</div>
+    <div class="pill stat">
+      <div class="label">השבוע</div>
+      <div class="value" id="weekCnt">0</div>
+      <div class="sub">שבוע שעבר: <span id="lastWeekCnt">0</span></div>
+    </div>
 
-<div style="margin-top:12px; display:flex; gap:10px;">
-  <button class="start" onclick="addSmoke(1)">➕ סיגריה</button>
-</div>
+    <div class="pill stat">
+      <div class="label">החודש</div>
+      <div class="value" id="moneyMonth">₪0</div>
+      <div class="sub">סיגריות: <span id="monthCnt">0</span></div>
+    </div>
 
-</div>
-</div>
+  </div>
+
+  <button class="fancy-btn" style="width: 10px; margin: 30px auto; display: flex; justify-content: center;" onclick="addSmoke(1)">➕ הוסף סיגריה</button>
 
 <!-- ===== LOGS ===== -->
 <div class="card">
@@ -330,10 +517,6 @@ button{
   <div id="confirmCountdown">15</div>
 
   <div id="confirmText">בחרת זמן</div>
-
-  <div class="confirmHint">
-    לאחר אישור יופעל טיימר בטיחות של 15 שניות
-  </div>
 
   <div class="confirmBtns">
     <button id="confirmBtn" class="start" onclick="startSafetyCountdown()">
@@ -413,6 +596,12 @@ let pendingSeconds = 0;
 let safetyTimer = null;
 let safetyLeft = 15;
 let safetyRunning = false;
+let timerStartMs = 0;
+let timerTotalSec = 0;
+let localTimerRunning = false;
+let lastRunning = false;
+
+
 
 
 function doStart(){
@@ -463,11 +652,24 @@ function startSafetyCountdown(){
       confirmBox.style.display='none';
       document.querySelector('.wrap').style.pointerEvents='auto';
 
-      await send("start", pendingSeconds);
-      pendingSeconds = 0;
+     timerStartMs = Date.now();
+timerTotalSec = pendingSeconds;
+localTimerRunning = true;
+
+barFill.style.width = "0%";
+barText.textContent = "0%";
+
+await send("start", pendingSeconds);
+pendingSeconds = 0;
     }
 
   },1000);
+}
+
+function formatClock(date){
+  const h = date.getHours().toString().padStart(2,'0');
+  const m = date.getMinutes().toString().padStart(2,'0');
+  return h + ":" + m;
 }
 
 function cancelConfirm(){
@@ -502,6 +704,15 @@ function format(sec){
          String(s).padStart(2,'0');
 }
 
+let showBar = false;
+
+function toggleTimerView(){
+  showBar = !showBar;
+
+  remaining.classList.toggle("hidden", showBar);
+  barWrap.classList.toggle("hidden", !showBar);
+}
+
 async function manualRefresh(){
   try{
     runText.textContent = "מרענן...";
@@ -517,7 +728,6 @@ function render(st){
 
   // ===== timer =====
   remaining.textContent = st.remaining_hms || "--:--:--";
-
   nextDur.textContent   = st.selected_hms || "--:--:--";
   totalOn.textContent   = st.total_on_hms || "--:--:--";
 
@@ -525,6 +735,15 @@ function render(st){
   setDot(st.running);
 
   hint.textContent = st.running ? 'הטיימר רץ' : 'בחר זמן והתחל';
+  // ===== estimated end time =====
+  if(st.running && st.remaining_sec != null){
+    const end = new Date(Date.now() + st.remaining_sec * 1000);
+    const hh = String(end.getHours()).padStart(2,'0');
+    const mm = String(end.getMinutes()).padStart(2,'0');
+    endTime.textContent = hh + ":" + mm;
+  }else{
+    endTime.textContent = "--:--";
+  }
 
   // ===== date line =====
   if(st.today_name && st.today_date){
@@ -533,6 +752,20 @@ function render(st){
     todayLine.textContent = "";
   }
 
+if(st.running && !lastRunning && st.remaining_sec != null && st.selected_sec != null){
+
+  const passed = st.selected_sec - st.remaining_sec;
+
+  timerStartMs = Date.now() - passed * 1000;
+  timerTotalSec = st.selected_sec;
+  localTimerRunning = true;
+}
+
+ if(!st.running){
+  localTimerRunning = false;
+  barFill.style.width = "0%";
+  barText.textContent = "0%";
+}
   // ===== stats =====
   todayCnt.textContent    = st.today ?? 0;
   yestCnt.textContent     = st.yesterday ?? 0;
@@ -561,6 +794,7 @@ function render(st){
   // ===== fire button lock =====
   fireBtn.disabled = st.running;
   fireBtn.style.opacity = st.running ? '0.4' : '1';
+  lastRunning = st.running;
 }
 
 /* ===== refresh ===== */
@@ -568,6 +802,25 @@ async function refresh(){
   const st = await getStatus();
   render(st);
 }
+
+setInterval(updateLocalBar, 1000);
+
+function updateLocalBar(){
+
+  if(!localTimerRunning || timerTotalSec <= 0) return;
+
+  const passed = (Date.now() - timerStartMs) / 1000;
+  let pct = (passed / timerTotalSec) * 100;
+
+  if(pct >= 100){
+    pct = 100;
+    localTimerRunning = false;
+  }
+
+  barFill.style.width = pct.toFixed(1) + "%";
+  barText.textContent = Math.round(pct) + "%";
+}
+
 
 async function addSmoke(c){
   try{
