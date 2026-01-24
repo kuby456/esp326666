@@ -91,6 +91,54 @@ button{
   box-shadow:0 10px 40px rgba(0,0,0,0.6);
 }
 
+/* ===== CONFIRM MODAL HIGHLIGHT ===== */
+
+.confirmCard{
+  animation: popIn .25s ease-out;
+}
+
+@keyframes popIn{
+  from{ transform:scale(.9); opacity:0; }
+  to{ transform:scale(1); opacity:1; }
+}
+
+#confirmCountdown{
+  font-size:42px;
+  font-weight:900;
+  color:#facc15;
+  text-shadow:0 0 12px rgba(250,204,21,.6);
+  margin-bottom:6px;
+}
+
+#confirmText{
+  font-size:20px;
+  font-weight:900;
+  margin:12px 0;
+  padding:10px 12px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#22c55e33,#22c55e11);
+  border:1px solid rgba(34,197,94,.4);
+  color:#22c55e;
+  box-shadow:0 0 20px rgba(34,197,94,.25);
+}
+
+.confirmHint{
+  font-size:13px;
+  opacity:.8;
+}
+
+.confirmBtns{
+  display:flex;
+  gap:10px;
+  margin-top:16px;
+}
+.drog{
+    margin: 0 auto 30px;
+    display: flex;
+    justify-content: center;
+    color:white;
+    background-color: rgba(60, 82, 107, 0.527);
+}
 </style>
 </head>
 
@@ -99,10 +147,21 @@ button{
 
 <!-- ===== STATUS ===== -->
 <div class="card">
-  <div class="status">
-    <div><b>Netzach Safe</b> • <span id="runText">טוען...</span></div>
+ <div class="status">
+  <div>
+    <b>Netzach Safe</b> • <span id="runText">טוען...</span><br>
+    <span id="todayLine" style="font-size:12px; opacity:0.75;">--</span>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:10px;">
+    <button onclick="manualRefresh()" 
+            style="background:#334155;color:#fff;border-radius:10px;padding:6px 10px;font-size:14px;">
+      🔄 רענן
+    </button>
     <div class="dot" id="dot"></div>
   </div>
+</div>
+
   <div class="big" id="remaining">--:--:--</div>
   <div class="hint" id="hint">טוען נתונים…</div>
 </div>
@@ -113,7 +172,7 @@ button{
 <div class="row">
 
 <div class="pill">
-  <div class="label">זמן שנבחר</div>
+  <div class="label">זמן הטיימר האחרון </div>
   <div class="value" id="nextDur">--:--:--</div>
 </div>
 
@@ -197,12 +256,12 @@ button{
 </div>
 
 <div class="pill">
-  <div class="label">סך זמן מצטבר</div>
+  <div class="label">סך זמן כל הטיימרים</div>
   <div class="value" id="totalOn">--:--:--</div>
 </div>
+</div>
+</div>
 
-</div>
-</div>
 <!-- ===== CONTROL ===== -->
 <div class="card">
 <h1>שליטה</h1>
@@ -210,6 +269,17 @@ button{
 <button class="start" onclick="doStart()">אישור / התחל</button>
 <button id="fireBtn" class="stop" onclick="doFire()">פתח כספת</button>
 </div>
+<hr style="
+  width:95%;
+  border:none;
+  height:4px;
+  background:linear-gradient(90deg, #ef4444a2, #22c55e85);
+  margin: 50px auto;
+  border-radius:4px;
+">
+
+<button class="drog" onclick="location.href='index2.html'">🚨 SOS</button>
+
 <div class="hint" style="margin-top:10px;">
 • אחרי התחלה אי אפשר לעצור עד שהטיימר נגמר.<br>
 • מקסימום זמן: 48 שעות.
@@ -239,6 +309,10 @@ button{
 <div class="sub">סיגריות: <span id="monthCnt">0</span></div>
 </div>
 
+<div style="margin-top:12px; display:flex; gap:10px;">
+  <button class="start" onclick="addSmoke(1)">➕ סיגריה</button>
+</div>
+
 </div>
 </div>
 
@@ -251,23 +325,36 @@ button{
 
 <!-- ===== CONFIRM MODAL ===== -->
 <div id="confirmBox" class="confirmBg" style="display:none;">
-  <div class="confirmCard">
-    <div style="font-size:18px; font-weight:900; margin-bottom:8px;">
-      אתה בטוח שאתה רוצה להפעיל טיימר ל־
-    </div>
-    <div id="confirmTime" style="font-size:34px; font-weight:900; margin:10px 0;">
-      00:00:00
-    </div>
-    <div style="display:flex; gap:10px; margin-top:10px;">
-      <button class="start" onclick="confirmStart()">כן, הפעל</button>
-      <button class="stop" onclick="closeConfirm()">ביטול</button>
-    </div>
+ <div class="confirmCard">
+
+  <div id="confirmCountdown">15</div>
+
+  <div id="confirmText">בחרת זמן</div>
+
+  <div class="confirmHint">
+    לאחר אישור יופעל טיימר בטיחות של 15 שניות
   </div>
+
+  <div class="confirmBtns">
+    <button id="confirmBtn" class="start" onclick="startSafetyCountdown()">
+      כן, הפעל
+    </button>
+    <button class="stop" onclick="cancelConfirm()">ביטול</button>
+  </div>
+
+ </div>
 </div>
+
 
 <script>
 const SB_URL = "https://xjtkgravwxhdhvrijjft.supabase.co";
 const API_KEY = "sb_publishable_Q3Y43jrRDl3LYpT5iPsCgw_88J7c1kZ";
+
+function logErr(t){
+  hint.textContent = "שגיאה בתקשורת";
+  console.log(t);
+}
+
 
 /* ===== SUPABASE API ===== */
 
@@ -323,37 +410,83 @@ async function send(cmd, value){
 /* ===== UI ===== */
 
 let pendingSeconds = 0;
-let localRemain = 0;
+let safetyTimer = null;
+let safetyLeft = 15;
+let safetyRunning = false;
+
 
 function doStart(){
-  const h=+hours.value, m=+minutes.value, s=+seconds.value;
-  const total=h*3600+m*60+s;
-  if(total < 1) return;
+
+    if(confirmBox.style.display === 'flex') return;
+
+  const h = +hours.value;
+  const m = +minutes.value;
+  const total = h*3600 + m*60;
+  if(total < 60) return;
 
   pendingSeconds = total;
 
-  confirmTime.textContent =
-    String(h).padStart(2,'0') + ':' +
-    String(m).padStart(2,'0') + ':' +
-    String(s).padStart(2,'0');
+  // ===== טקסט במילים =====
+  let txt = "בחרת ";
+  if(h > 0) txt += (h === 1 ? "שעה" : h + " שעות");
+  if(h > 0 && m > 0) txt += " ו־";
+  if(m > 0) txt += m + " דקות";
+
+  confirmText.textContent = txt;
+
+  // ===== איפוס טיימר =====
+  safetyLeft = 15;
+  confirmCountdown.textContent = safetyLeft;
+  safetyRunning = false;
+  confirmBtn.textContent = "כן, הפעל";
 
   confirmBox.style.display='flex';
   document.querySelector('.wrap').style.pointerEvents='none';
 }
 
-function closeConfirm(){
-  confirmBox.style.display='none';
-  document.querySelector('.wrap').style.pointerEvents='auto';
-  pendingSeconds=0;
+function startSafetyCountdown(){
+
+  if(safetyRunning) return;
+
+  safetyRunning = true;
+  confirmBtn.textContent = "ממתין...";
+
+  safetyTimer = setInterval(async ()=>{
+
+    safetyLeft--;
+    confirmCountdown.textContent = safetyLeft;
+
+    if(safetyLeft <= 0){
+      clearInterval(safetyTimer);
+
+      // ✅ רק עכשיו מפעילים את ה-ESP
+      confirmBox.style.display='none';
+      document.querySelector('.wrap').style.pointerEvents='auto';
+
+      await send("start", pendingSeconds);
+      pendingSeconds = 0;
+    }
+
+  },1000);
 }
 
-async function confirmStart(){
-  if(pendingSeconds<1) return;
+function cancelConfirm(){
+
+  if(safetyTimer){
+    clearInterval(safetyTimer);
+    safetyTimer = null;
+  }
+
+  safetyRunning = false;
+  pendingSeconds = 0;
+  safetyLeft = 15;
+  confirmCountdown.textContent = safetyLeft;
+  confirmBtn.textContent = "כן, הפעל";
+
   confirmBox.style.display='none';
   document.querySelector('.wrap').style.pointerEvents='auto';
-  await send("start", pendingSeconds);
-  pendingSeconds=0;
 }
+
 
 async function doFire(){ await send("fire",1); }
 
@@ -369,63 +502,77 @@ function format(sec){
          String(s).padStart(2,'0');
 }
 
+async function manualRefresh(){
+  try{
+    runText.textContent = "מרענן...";
+    await refresh();
+  }catch(e){}
+}
+
 function render(st){
   if(!st){
     hint.textContent = "אין חיבור ל-Supabase";
     return;
   }
 
-  if(typeof st.remaining_sec === "number"){
-    localRemain = st.remaining_sec;
-    remaining.textContent = format(localRemain);
-  } else {
-    remaining.textContent = st.remaining_hms || "--:--:--";
-  }
+  // ===== timer =====
+  remaining.textContent = st.remaining_hms || "--:--:--";
 
-  nextDur.textContent   = st.selected_hms;
-  totalOn.textContent   = st.total_on_hms;
+  nextDur.textContent   = st.selected_hms || "--:--:--";
+  totalOn.textContent   = st.total_on_hms || "--:--:--";
 
   runText.textContent = st.running ? 'רץ עכשיו' : 'ממתין';
   setDot(st.running);
 
   hint.textContent = st.running ? 'הטיימר רץ' : 'בחר זמן והתחל';
 
-  todayCnt.textContent    = st.today;
-  yestCnt.textContent     = st.yesterday;
-  weekCnt.textContent     = st.week;
-  lastWeekCnt.textContent = st.lastWeek;
-  monthCnt.textContent    = st.month;
-  moneyMonth.textContent  = '₪ ' + st.money;
+  // ===== date line =====
+  if(st.today_name && st.today_date){
+    todayLine.textContent = st.today_name + " • " + st.today_date;
+  }else{
+    todayLine.textContent = "";
+  }
 
-  logList.innerHTML='';
+  // ===== stats =====
+  todayCnt.textContent    = st.today ?? 0;
+  yestCnt.textContent     = st.yesterday ?? 0;
+  weekCnt.textContent     = st.week ?? 0;
+  lastWeekCnt.textContent = st.lastWeek ?? 0;
+  monthCnt.textContent    = st.month ?? 0;
+  moneyMonth.textContent  = '₪ ' + (st.money ?? 0);
+
+  // ===== logs =====
+  logList.innerHTML = '';
   if(st.logs && st.logs.length){
     st.logs.slice().reverse().forEach(l=>{
-      const d=new Date(l.t*1000);
-      const t=d.getHours().toString().padStart(2,'0')+':'+
-              d.getMinutes().toString().padStart(2,'0');
-      const dur=new Date(l.d*1000).toISOString().substr(11,8);
-      const div=document.createElement('div');
-      div.textContent='🕒 '+t+' — '+dur;
+      const d = new Date(l.t * 1000);
+      const t =
+        d.getHours().toString().padStart(2,'0') + ':' +
+        d.getMinutes().toString().padStart(2,'0');
+      const dur = new Date(l.d * 1000).toISOString().substr(11,8);
+      const div = document.createElement('div');
+      div.textContent = '🕒 ' + t + ' — ' + dur;
       logList.appendChild(div);
     });
-  }else logList.textContent='אין נתונים עדיין';
-
-  fireBtn.disabled = st.running;
-  fireBtn.style.opacity = st.running?'0.4':'1';
-}
-
-/* ===== local countdown ===== */
-setInterval(()=>{
-  if(localRemain > 0){
-    localRemain--;
-    remaining.textContent = format(localRemain);
+  }else{
+    logList.textContent = 'אין נתונים עדיין';
   }
-},1000);
+
+  // ===== fire button lock =====
+  fireBtn.disabled = st.running;
+  fireBtn.style.opacity = st.running ? '0.4' : '1';
+}
 
 /* ===== refresh ===== */
 async function refresh(){
   const st = await getStatus();
   render(st);
+}
+
+async function addSmoke(c){
+  try{
+    await send("smoke", c);
+  }catch(e){}
 }
 
 setInterval(refresh,2000);
