@@ -261,7 +261,7 @@ const TOTAL = MAX*MAX*MAX;      // 1728
 let input = [];
 let tried = new Set();
 let expectedIndex = 0;
-let secretIndex = calcIndex(1,1,1); // תמיד הקוד יהיה 1,1,1
+let secretIndex = Math.floor(Math.random() * TOTAL);
 let unlocked = false; 
 
 console.log("SECRET:", secretIndex); // רק לפיתוח 😅
