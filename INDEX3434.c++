@@ -43,6 +43,10 @@ bool hasLockTime = false;
 /* ========= WIFI CONNECT ========= */
 void connectWiFi() {
 
+  WiFi.disconnect(true);   // ⬅️ חשוב!
+  delay(500);
+
+  Serial.println("📡 Connecting WiFi #1...");
   WiFi.begin(ssid1, pass1);
 
   int tries = 0;
@@ -53,8 +57,13 @@ void connectWiFi() {
   }
 
   if (WiFi.status() != WL_CONNECTED) {
+
     Serial.println("\n🔁 Trying second WiFi...");
+    WiFi.disconnect(true);   // ⬅️ שוב ניתוק
+    delay(500);
+
     WiFi.begin(ssid2, pass2);
+
     tries = 0;
     while (WiFi.status() != WL_CONNECTED && tries < 20) {
       delay(500);
@@ -64,12 +73,12 @@ void connectWiFi() {
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-  Serial.println("\n📶 WiFi connected");
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
-} else {
-  Serial.println("\n❌ WiFi failed (will retry in loop)");
-}
+    Serial.println("\n📶 WiFi connected");
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\n❌ WiFi failed (will retry in loop)");
+  }
 }
 
 /* ========= TIME ========= */
