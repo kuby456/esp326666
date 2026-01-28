@@ -8,7 +8,7 @@ Preferences prefs;
 const char* ssid1 = "Netzach";
 const char* pass1 = "12345678";
 
-const char* ssid2 = "Cudy-35F8-5G";
+const char* ssid2 = "Cudy-35F8";
 const char* pass2 = "51265151";
 
 /* ========= MQTT ========= */
@@ -239,9 +239,6 @@ void connectMQTT() {
 
 /* ========= SETUP ========= */
 void setup() {
-prefs.begin("safe", false);
-prefs.clear();
-prefs.end();
 
   Serial.begin(115200);
 
