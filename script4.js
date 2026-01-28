@@ -26,7 +26,7 @@ function sendCommandIfAllowed(){
 function sendLockFromTimer(){
 
   if(!client || !client.connected){
-    alert("אין חיבור לשרת MQTT");
+    alert("אין חיבור ל-MQTT");
     return;
   }
 
@@ -34,14 +34,23 @@ function sendLockFromTimer(){
   const m = parseInt(document.getElementById("minutes").value);
   const s = parseInt(document.getElementById("seconds").value);
 
+  // לא לאפשר נעילה של 0
+  if(h === 0 && m === 0 && s === 0){
+    alert("בחר זמן לנעילה");
+    return;
+  }
+
   const now = new Date();
-  const lock = new Date(now.getTime() + (h*3600 + m*60 + s)*1000);
+  const unlock = new Date(now.getTime() + (h*3600 + m*60 + s)*1000);
 
-  const hh = String(lock.getHours()).padStart(2,'0');
-  const mm = String(lock.getMinutes()).padStart(2,'0');
+  const hh = String(unlock.getHours()).padStart(2, '0');
+  const mm = String(unlock.getMinutes()).padStart(2, '0');
+  const ss = String(unlock.getSeconds()).padStart(2, '0');
 
-  const msg = `LOCK:${hh}:${mm}`;
+  const msg = `LOCK:${hh}:${mm}:${ss}`;
 
   client.publish(TOPIC_CMD, msg);
   console.log("📤 MQTT ->", msg);
 }
+
+
