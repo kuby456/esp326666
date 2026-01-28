@@ -292,6 +292,15 @@ text-align: center;
   display:none;
 }
 
+.dot.on{
+  background:#ef4444;
+  box-shadow:0 0 18px rgba(239,68,68,0.8);
+}
+.dot.off{
+  background:#22c55e;
+  box-shadow:0 0 18px rgba(34,197,94,0.8);
+}
+
 </style>
 </head>
 
@@ -313,33 +322,13 @@ text-align: center;
 
 <div id="timerBox" class="timerBox" onclick="toggleTimerView()">
 
-  <div class="big" id="remaining">--:--:--</div>
+  <div class="big" id="remaining">00:00:00</div>
 
   <div id="barWrap" class="barWrap hidden">
     <div id="barFill" class="barFill"></div>
     <div id="barText" class="barText">0%</div>
   </div>
-
 </div>
-  <div class="hint" id="hint">טוען נתונים…</div>
-
-  <!-- כפתור רענון למטה -->
-  <div style="margin-top:14px; text-align:center;">
-    <button onclick="manualRefresh()"
-      style="
-        background:#334155;
-        color:#fff;
-        border-radius:12px;
-        padding:8px 16px;
-        font-size:20px;
-        font-weight:800;
-        padding: 15px 30px;
-        width: 70%;
-      ">
-      🔄 רענן נתונים
-    </button>
-  </div>
-
 </div>
 
 
@@ -352,12 +341,12 @@ text-align: center;
 
   <div>
     <div class="label">זמן הטיימר האחרון</div>
-    <div class="value" id="nextDur">--:--:--</div>
+    <div class="value" id="nextDur">00:00:00</div>
   </div>
 
   <div>
     <div class="label">שעת סיום טיימר</div>
-    <div class="value" id="endTime">--:--</div>
+    <div class="value" id="endTime">00:00</div>
   </div>
 
 </div>
@@ -377,21 +366,6 @@ text-align: center;
 <select id="hours" class="timeSelect">
 <option value="0">0</option><option value="1">1</option><option value="2">2</option>
 <option value="3">3</option><option value="4">4</option><option value="5">5</option>
-<option value="6">6</option><option value="7">7</option><option value="8">8</option>
-<option value="9">9</option><option value="10">10</option><option value="11">11</option>
-<option value="12">12</option><option value="13">13</option><option value="14">14</option>
-<option value="15">15</option><option value="16">16</option><option value="17">17</option>
-<option value="18">18</option><option value="19">19</option><option value="20">20</option>
-<option value="21">21</option><option value="22">22</option><option value="23">23</option>
-<option value="24">24</option><option value="25">25</option><option value="26">26</option>
-<option value="27">27</option><option value="28">28</option><option value="29">29</option>
-<option value="30">30</option><option value="31">31</option><option value="32">32</option>
-<option value="33">33</option><option value="34">34</option><option value="35">35</option>
-<option value="36">36</option><option value="37">37</option><option value="38">38</option>
-<option value="39">39</option><option value="40">40</option><option value="41">41</option>
-<option value="42">42</option><option value="43">43</option><option value="44">44</option>
-<option value="45">45</option><option value="46">46</option><option value="47">47</option>
-<option value="48">48</option>
 </select>
 
 <select id="minutes" class="timeSelect">
@@ -454,8 +428,8 @@ text-align: center;
 <div class="card">
 <h1>שליטה</h1>
 <div class="btns">
-<button class="start" onclick="doStart()">אישור / התחל</button>
-<button id="fireBtn" class="stop" onclick="doFire()">פתח כספת</button>
+<button class="start" onclick="startWithConfirm()">אישור / התחל</button>
+<button id="fireBtn" class="stop" onclick="sendCommandIfAllowed()">פתח כספת</button>
 </div>
 <hr style="
   width:100%;
@@ -508,332 +482,31 @@ text-align: center;
 <h1>טיימרים אחרונים</h1>
 <div id="logList" class="logList">אין נתונים עדיין</div>
 </div>
-
-
-<!-- ===== CONFIRM MODAL ===== -->
-<div id="confirmBox" class="confirmBg" style="display:none;">
- <div class="confirmCard">
-
-  <div id="confirmCountdown">15</div>
-
-  <div id="confirmText">בחרת זמן</div>
-
-  <div class="confirmBtns">
-    <button id="confirmBtn" class="start" onclick="startSafetyCountdown()">
-      כן, הפעל
-    </button>
-    <button class="stop" onclick="cancelConfirm()">ביטול</button>
-  </div>
-
- </div>
-</div>
-
+</div> <!-- סגירה של wrap -->
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
 <script>
-const SB_URL = "https://xjtkgravwxhdhvrijjft.supabase.co";
-const API_KEY = "sb_publishable_Q3Y43jrRDl3LYpT5iPsCgw_88J7c1kZ";
+  // ===== MQTT CONFIG =====
+const MQTT_URL = "wss://broker.hivemq.com:8884/mqtt";
+const TOPIC_CMD = "netzach/safe/cmd";
 
-function logErr(t){
-  hint.textContent = "שגיאה בתקשורת";
-  console.log(t);
-}
 
+// ===== CONNECT =====
+const client = mqtt.connect(MQTT_URL);
 
-/* ===== SUPABASE API ===== */
+client.on("connect", () => {
+  console.log("✅ MQTT connected");
+});
 
-async function getStatus(){
-  try{
-    const r = await fetch(
-      SB_URL + "/rest/v1/esp_status?id=eq.1&select=*",
-      { headers:{ apikey:API_KEY, Authorization:"Bearer "+API_KEY } }
-    );
+client.on("error", (err) => {
+  console.error("❌ MQTT error", err);
+});
 
-    if(!r.ok){
-      const tx = await r.text();
-      logErr("GET STATUS ERR " + r.status + ":\n" + tx);
-      return null;
-    }
-
-    const j = await r.json();
-    return j[0];
-
-  }catch(e){
-    logErr("GET STATUS FETCH FAIL: " + e);
-    return null;
-  }
-}
-
-async function send(cmd, value){
-  try{
-    const r = await fetch(SB_URL + "/rest/v1/esp_cmd?id=eq.1", {
-      method: "PATCH",
-      headers: {
-        apikey: API_KEY,
-        Authorization: "Bearer " + API_KEY,
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify({
-        cmd: cmd,
-        value: value,
-        updated_at: new Date().toISOString()
-      })
-    });
-
-    if(!r.ok){
-      const tx = await r.text();
-      logErr("SEND CMD ERR " + r.status + ":\n" + tx);
-    }
-
-  }catch(e){
-    logErr("SEND CMD FETCH FAIL: " + e);
-  }
-}
-
-/* ===== UI ===== */
-
-let pendingSeconds = 0;
-let safetyTimer = null;
-let safetyLeft = 15;
-let safetyRunning = false;
-let timerStartMs = 0;
-let timerTotalSec = 0;
-let localTimerRunning = false;
-let lastRunning = false;
-
-
-
-
-function doStart(){
-
-    if(confirmBox.style.display === 'flex') return;
-
-  const h = +hours.value;
-  const m = +minutes.value;
-  const total = h*3600 + m*60;
-  if(total < 60) return;
-
-  pendingSeconds = total;
-
-  // ===== טקסט במילים =====
-  let txt = "בחרת ";
-  if(h > 0) txt += (h === 1 ? "שעה" : h + " שעות");
-  if(h > 0 && m > 0) txt += " ו־";
-  if(m > 0) txt += m + " דקות";
-
-  confirmText.textContent = txt;
-
-  // ===== איפוס טיימר =====
-  safetyLeft = 15;
-  confirmCountdown.textContent = safetyLeft;
-  safetyRunning = false;
-  confirmBtn.textContent = "כן, הפעל";
-
-  confirmBox.style.display='flex';
-  document.querySelector('.wrap').style.pointerEvents='none';
-}
-
-function startSafetyCountdown(){
-
-  if(safetyRunning) return;
-
-  safetyRunning = true;
-  confirmBtn.textContent = "ממתין...";
-
-  safetyTimer = setInterval(async ()=>{
-
-    safetyLeft--;
-    confirmCountdown.textContent = safetyLeft;
-
-    if(safetyLeft <= 0){
-      clearInterval(safetyTimer);
-
-      // ✅ רק עכשיו מפעילים את ה-ESP
-      confirmBox.style.display='none';
-      document.querySelector('.wrap').style.pointerEvents='auto';
-
-     timerStartMs = Date.now();
-timerTotalSec = pendingSeconds;
-localTimerRunning = true;
-
-barFill.style.width = "0%";
-barText.textContent = "0%";
-
-await send("start", pendingSeconds);
-pendingSeconds = 0;
-    }
-
-  },1000);
-}
-
-function formatClock(date){
-  const h = date.getHours().toString().padStart(2,'0');
-  const m = date.getMinutes().toString().padStart(2,'0');
-  return h + ":" + m;
-}
-
-function cancelConfirm(){
-
-  if(safetyTimer){
-    clearInterval(safetyTimer);
-    safetyTimer = null;
-  }
-
-  safetyRunning = false;
-  pendingSeconds = 0;
-  safetyLeft = 15;
-  confirmCountdown.textContent = safetyLeft;
-  confirmBtn.textContent = "כן, הפעל";
-
-  confirmBox.style.display='none';
-  document.querySelector('.wrap').style.pointerEvents='auto';
-}
-
-
-async function doFire(){ await send("fire",1); }
-
-function setDot(on){ dot.className='dot '+(on?'on':'off'); }
-
-function format(sec){
-  if(sec < 0) sec = 0;
-  const h = Math.floor(sec/3600);
-  const m = Math.floor((sec%3600)/60);
-  const s = sec%60;
-  return String(h).padStart(2,'0')+':' +
-         String(m).padStart(2,'0')+':' +
-         String(s).padStart(2,'0');
-}
-
-let showBar = false;
-
-function toggleTimerView(){
-  showBar = !showBar;
-
-  remaining.classList.toggle("hidden", showBar);
-  barWrap.classList.toggle("hidden", !showBar);
-}
-
-async function manualRefresh(){
-  try{
-    runText.textContent = "מרענן...";
-    await refresh();
-  }catch(e){}
-}
-
-function render(st){
-  if(!st){
-    hint.textContent = "אין חיבור ל-Supabase";
-    return;
-  }
-
-  // ===== timer =====
-  remaining.textContent = st.remaining_hms || "--:--:--";
-  nextDur.textContent   = st.selected_hms || "--:--:--";
-  totalOn.textContent   = st.total_on_hms || "--:--:--";
-
-  runText.textContent = st.running ? 'רץ עכשיו' : 'ממתין';
-  setDot(st.running);
-
-  hint.textContent = st.running ? 'הטיימר רץ' : 'בחר זמן והתחל';
-  // ===== estimated end time =====
-  if(st.running && st.remaining_sec != null){
-    const end = new Date(Date.now() + st.remaining_sec * 1000);
-    const hh = String(end.getHours()).padStart(2,'0');
-    const mm = String(end.getMinutes()).padStart(2,'0');
-    endTime.textContent = hh + ":" + mm;
-  }else{
-    endTime.textContent = "--:--";
-  }
-
-  // ===== date line =====
-  if(st.today_name && st.today_date){
-    todayLine.textContent = st.today_name + " • " + st.today_date;
-  }else{
-    todayLine.textContent = "";
-  }
-
-if(st.running && !lastRunning && st.remaining_sec != null && st.selected_sec != null){
-
-  const passed = st.selected_sec - st.remaining_sec;
-
-  timerStartMs = Date.now() - passed * 1000;
-  timerTotalSec = st.selected_sec;
-  localTimerRunning = true;
-}
-
- if(!st.running){
-  localTimerRunning = false;
-  barFill.style.width = "0%";
-  barText.textContent = "0%";
-}
-  // ===== stats =====
-  todayCnt.textContent    = st.today ?? 0;
-  yestCnt.textContent     = st.yesterday ?? 0;
-  weekCnt.textContent     = st.week ?? 0;
-  lastWeekCnt.textContent = st.lastWeek ?? 0;
-  monthCnt.textContent    = st.month ?? 0;
-  moneyMonth.textContent  = '₪ ' + (st.money ?? 0);
-
-  // ===== logs =====
-  logList.innerHTML = '';
-  if(st.logs && st.logs.length){
-    st.logs.slice().reverse().forEach(l=>{
-      const d = new Date(l.t * 1000);
-      const t =
-        d.getHours().toString().padStart(2,'0') + ':' +
-        d.getMinutes().toString().padStart(2,'0');
-      const dur = new Date(l.d * 1000).toISOString().substr(11,8);
-      const div = document.createElement('div');
-      div.textContent = '🕒 ' + t + ' — ' + dur;
-      logList.appendChild(div);
-    });
-  }else{
-    logList.textContent = 'אין נתונים עדיין';
-  }
-
-  // ===== fire button lock =====
-  fireBtn.disabled = st.running;
-  fireBtn.style.opacity = st.running ? '0.4' : '1';
-  lastRunning = st.running;
-}
-
-/* ===== refresh ===== */
-async function refresh(){
-  const st = await getStatus();
-  render(st);
-}
-
-setInterval(updateLocalBar, 1000);
-
-function updateLocalBar(){
-
-  if(!localTimerRunning || timerTotalSec <= 0) return;
-
-  const passed = (Date.now() - timerStartMs) / 1000;
-  let pct = (passed / timerTotalSec) * 100;
-
-  if(pct >= 100){
-    pct = 100;
-    localTimerRunning = false;
-  }
-
-  barFill.style.width = pct.toFixed(1) + "%";
-  barText.textContent = Math.round(pct) + "%";
-}
-
-
-async function addSmoke(c){
-  try{
-    await send("smoke", c);
-  }catch(e){}
-}
-
-setInterval(refresh,2000);
-refresh();
 </script>
 
-
-
-
+<script src="script.js"></script>
+<script src="script2.js"></script>
+<script src="script3.js"></script>
+<script src="script4.js"></script>
 </body>
 </html>
