@@ -31,18 +31,18 @@ int ledDir = 1; // 1 = עולה, -1 = יורד
 #define PIN15 15
 #define LED_PIN 18
 
+
 WiFiClient espClient;
 PubSubClient mqtt(espClient);
 
 /* ========= STATE ========= */
-int lockHour = -1;
-int lockMin  = -1;
+time_t unlockEpoch = 0;
 bool hasLockTime = false;
+
 
 /* ========= WIFI CONNECT ========= */
 void connectWiFi() {
 
-  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid1, pass1);
 
   int tries = 0;
@@ -64,14 +64,12 @@ void connectWiFi() {
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\n📶 WiFi connected");
-    Serial.print("IP: ");
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("\n❌ WiFi failed, retry...");
-    delay(3000);
-    connectWiFi();
-  }
+  Serial.println("\n📶 WiFi connected");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
+} else {
+  Serial.println("\n❌ WiFi failed (will retry in loop)");
+}
 }
 
 /* ========= TIME ========= */
@@ -87,7 +85,7 @@ void updateBreathingLED(unsigned long interval){
   if(millis() - lastLedUpdate < interval) return;
   lastLedUpdate = millis();
 
-  ledBrightness += ledDir * 5;
+ledBrightness += ledDir * 2;
 
   if(ledBrightness >= 255){
     ledBrightness = 255;
@@ -98,24 +96,24 @@ void updateBreathingLED(unsigned long interval){
     ledDir = 1;
   }
 
-  analogWrite(LED_PIN, ledBrightness);
+ledcWrite(LED_PIN, ledBrightness);
 }
 
 long secondsUntilUnlock(){
 
   if(!hasLockTime) return -1;
 
-  struct tm t;
-  if(!getLocalTime(&t)) return -1;
+  time_t now = time(nullptr);
+  long diff = unlockEpoch - now;
 
-  long nowSec = t.tm_hour*3600 + t.tm_min*60 + t.tm_sec;
-  long lockSec = lockHour*3600 + lockMin*60;
+  if(diff <= 0){
+    hasLockTime = false;
 
-  long diff = lockSec - nowSec;
+    prefs.begin("safe", false);
+    prefs.putBool("has", false);
+    prefs.end();
 
-  // אם יצא שלילי → זה אומר יום הבא
-  if(diff < 0){
-    diff += 24L * 3600L;
+    return 0;
   }
 
   return diff;
@@ -133,26 +131,51 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   // ----- LOCK UNTIL TIME -----
   if (msg.startsWith("LOCK:")) {
 
-  String t = msg.substring(5);   // HH:MM
-  int h, m;
+    String t = msg.substring(5);   // HH:MM:SS
+    int h, m, s;
 
-  if (sscanf(t.c_str(), "%d:%d", &h, &m) == 2) {
-    lockHour = h;
-    lockMin  = m;
-    hasLockTime = true;
+    if (sscanf(t.c_str(), "%d:%d:%d", &h, &m, &s) == 3 &&
+        h >= 0 && h < 24 &&
+        m >= 0 && m < 60 &&
+        s >= 0 && s < 60) {
 
-    // ✅ שמירה ל-Flash
-    prefs.begin("safe", false);
-    prefs.putInt("lockH", lockHour);
-    prefs.putInt("lockM", lockMin);
-    prefs.putBool("has", true);
-    prefs.end();
+      struct tm now;
+      if (!getLocalTime(&now)) {
+        Serial.println("❌ No NTP time, cannot lock");
+        return;
+      }
 
-    Serial.printf("🔒 Locked until %02d:%02d (saved)\n", lockHour, lockMin);
+      struct tm unlock = now;
+      unlock.tm_hour = h;
+      unlock.tm_min  = m;
+      unlock.tm_sec  = s;
+
+      time_t unlockT = mktime(&unlock);
+
+      time_t nowT = time(nullptr);
+
+      // אם הזמן כבר עבר — לא לנעול ל־מחר
+      if (unlockT <= nowT) {
+        Serial.println("⚠️ LOCK time already passed, ignoring");
+        return;
+      }
+
+      unlockEpoch = unlockT;
+      hasLockTime = true;
+
+      prefs.begin("safe", false);
+      prefs.putULong("unlock", (uint32_t)unlockEpoch);
+      prefs.putBool("has", true);
+      prefs.end();
+
+      Serial.printf("🔒 Locked until %02d:%02d:%02d\n", h, m, s);
+    }
+    else {
+      Serial.println("❌ Invalid LOCK format (need HH:MM:SS)");
+    }
+
+    return;
   }
-  return;
-}
-
 
   // ----- OPEN -----
   if (msg == "OPEN") {
@@ -164,7 +187,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     Serial.println("🔓 SAFE OPEN");
     triggerPulse();
-digitalWrite(LED_PIN, LOW);
     return;
   }
 
@@ -172,10 +194,12 @@ digitalWrite(LED_PIN, LOW);
   if (msg == "CLOSE") {
     Serial.println("🔒 SAFE CLOSED");
     digitalWrite(PIN15, LOW);
-    digitalWrite(LED_PIN, HIGH);
     return;
   }
 }
+
+
+
 void triggerPulse(){
 
   if(pulseActive){
@@ -215,52 +239,78 @@ void connectMQTT() {
 
 /* ========= SETUP ========= */
 void setup() {
+prefs.begin("safe", false);
+prefs.clear();
+prefs.end();
 
   Serial.begin(115200);
 
   pinMode(PIN15, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);
   digitalWrite(PIN15, LOW);
-  digitalWrite(LED_PIN, HIGH);
 
+  // --- WiFi ---
+  WiFi.mode(WIFI_STA);
   connectWiFi();
 
-  // --- NTP חובה בהתחלה ---
+  // --- NTP ---
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
   Serial.print("⏱ Waiting for NTP");
   struct tm t;
-  while (!getLocalTime(&t)) {
+  unsigned long start = millis();
+
+  while (!getLocalTime(&t) && millis() - start < 15000) {
     Serial.print(".");
     delay(500);
   }
-  Serial.println("\n✅ Time synced");
-  // ===== LOAD LOCK TIME FROM FLASH =====
-  prefs.begin("safe", true);
 
-  hasLockTime = prefs.getBool("has", false);
-  if (hasLockTime) {
-    lockHour = prefs.getInt("lockH", -1);
-    lockMin  = prefs.getInt("lockM", -1);
-
-    Serial.printf("🔁 Restored lock time: %02d:%02d\n", lockHour, lockMin);
+  if(!getLocalTime(&t)){
+    Serial.println("\n⚠️ NTP failed, running without time lock");
+  }
+  else{
+    Serial.println("\n✅ Time synced");
   }
 
+  // ===== LOAD LOCK TIME FROM FLASH =====
+  prefs.begin("safe", true);
+  hasLockTime = prefs.getBool("has", false);
+  if (hasLockTime) {
+    unlockEpoch = prefs.getULong("unlock", 0);
+  }
   prefs.end();
 
+  // 🔥 אם הייתה נעילה שכבר נגמרה – לנקות
+  if (hasLockTime) {
+    time_t now = time(nullptr);
+    if (unlockEpoch <= now) {
+      Serial.println("🧹 Stored lock expired, clearing");
+
+      hasLockTime = false;
+      unlockEpoch = 0;
+
+      prefs.begin("safe", false);
+      prefs.putBool("has", false);
+      prefs.end();
+    }
+  }
+
+  // --- MQTT ---
   mqtt.setServer(mqttServer, mqttPort);
   mqtt.setCallback(mqttCallback);
+
+  // --- LED PWM ---
+  ledcAttach(LED_PIN, 5000, 8);   // pin, freq, resolution
 }
+
 
 /* ========= LOOP ========= */
 void loop() {
 
-  if (WiFi.status() != WL_CONNECTED) {
-    connectWiFi();
-    delay(1000);
-    return;
-  }
-
+ if (WiFi.status() != WL_CONNECTED) {
+  connectWiFi();
+  delay(1000);
+  return;
+}
   if (!mqtt.connected()) {
     connectMQTT();
   }
@@ -274,29 +324,30 @@ void loop() {
     Serial.println("⚡ RELAY PULSE END");
   }
 
-  // ----- LED logic -----
-  long left = secondsUntilUnlock();
+// ----- LED logic -----
+long left = secondsUntilUnlock();
 
-  if(pulseActive){
-    analogWrite(LED_PIN, 255);
+if(pulseActive){
+  ledcWrite(LED_PIN, 255);   // דלוק חזק בזמן פתיחה
+}
+else if(hasLockTime && left > 0){
+
+  if(left > 1800){
+    // יותר מ-30 דקות -> כבוי
+    ledcWrite(LED_PIN, 0);
   }
-  else if(hasLockTime && left > 0){
-
-    if(left > 1800){
-      analogWrite(LED_PIN, 0);
-    }
-    else if(left > 600){
-      updateBreathingLED(40);
-    }
-    else{
-      updateBreathingLED(10);
-    }
-
-  }
-  else if(hasLockTime && left <= 0){
-    analogWrite(LED_PIN, 255);
+  else if(left > 600){
+    // 30 דקות אחרונות -> נשימה איטית
+    updateBreathingLED(40);
   }
   else{
-    analogWrite(LED_PIN, 0);
+    // 10 דקות אחרונות -> נשימה מהירה
+    updateBreathingLED(10);
   }
+
+}
+else{
+  // הזמן נגמר או אין נעילה -> דלוק קבוע
+  ledcWrite(LED_PIN, 255);
+}
 }
