@@ -37,6 +37,11 @@ client.on("error", err => {
 });
 
 
+function setStatus(text, ok){
+  console.log("📡 STATUS:", text);
+  runText.textContent = text;
+  runText.style.color = ok ? "limegreen" : "orange";
+}
 
 
 /* ========= OPEN COMMAND ========= */
