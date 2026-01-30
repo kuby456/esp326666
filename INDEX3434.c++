@@ -26,6 +26,7 @@ const unsigned long PULSE_TIME = 2000; // 2 שניות
 unsigned long lastLedUpdate = 0;
 int ledBrightness = 0;
 int ledDir = 1; // 1 = עולה, -1 = יורד
+static bool lastStateOn = false;
 
 /* ========= PINS ========= */
 #define PIN15 15
@@ -90,23 +91,24 @@ bool isTimeLocked(){
 
 
 void updateBreathingLED(unsigned long interval){
+    if(millis() - lastLedUpdate < interval) return;
+    lastLedUpdate = millis();
 
-  if(millis() - lastLedUpdate < interval) return;
-  lastLedUpdate = millis();
+    // נשימה מהירה יותר
+    ledBrightness += ledDir * 4; // צעד גדול יותר → נשימה מהירה יותר
 
-ledBrightness += ledDir * 2;
+    if(ledBrightness >= 255){
+        ledBrightness = 255;
+        ledDir = -1;
+    }
+    if(ledBrightness <= 0){
+        ledBrightness = 0;
+        ledDir = 1;
+    }
 
-  if(ledBrightness >= 255){
-    ledBrightness = 255;
-    ledDir = -1;
-  }
-  if(ledBrightness <= 0){
-    ledBrightness = 0;
-    ledDir = 1;
-  }
-
-ledcWrite(LED_PIN, ledBrightness);
+    ledcWrite(LED_PIN, ledBrightness);
 }
+
 
 long secondsUntilUnlock(){
 
@@ -137,9 +139,18 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.print("📩 MQTT => ");
   Serial.println(msg);
 
+  // ----- STATUS REQUEST -----
+  if(msg == "STATUS"){           
+    if(WiFi.status() == WL_CONNECTED && mqtt.connected()){
+      mqtt.publish(TOPIC_CMD, "ONLINE");
+    } else {
+      mqtt.publish(TOPIC_CMD, "OFFLINE");
+    }
+    return;
+  }
+
   // ----- LOCK UNTIL TIME -----
   if (msg.startsWith("LOCK:")) {
-
     String t = msg.substring(5);   // HH:MM:SS
     int h, m, s;
 
@@ -160,10 +171,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       unlock.tm_sec  = s;
 
       time_t unlockT = mktime(&unlock);
-
       time_t nowT = time(nullptr);
 
-      // אם הזמן כבר עבר — לא לנעול ל־מחר
       if (unlockT <= nowT) {
         Serial.println("⚠️ LOCK time already passed, ignoring");
         return;
@@ -188,7 +197,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   // ----- OPEN -----
   if (msg == "OPEN") {
-
     if (isTimeLocked()) {
       Serial.println("⛔ OPEN BLOCKED (time lock active)");
       return;
@@ -196,6 +204,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     Serial.println("🔓 SAFE OPEN");
     triggerPulse();
+    mqtt.publish(TOPIC_CMD, "ESP_ON"); // מחזירים סטטוס
     return;
   }
 
@@ -203,10 +212,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   if (msg == "CLOSE") {
     Serial.println("🔒 SAFE CLOSED");
     digitalWrite(PIN15, LOW);
+    mqtt.publish(TOPIC_CMD, "ESP_OFF"); 
     return;
   }
 }
-
 
 
 void triggerPulse(){
@@ -226,11 +235,14 @@ void triggerPulse(){
 /* ========= MQTT CONNECT ========= */
 void connectMQTT() {
 
+  // Client ID קבוע לפי MAC
+  String cid = "ESP32_SAFE_" + WiFi.macAddress();
+  cid.replace(":", ""); // מסירים נקודותיים
+  Serial.print("Using MQTT Client ID: ");
+  Serial.println(cid);
+
   while (!mqtt.connected()) {
-
     Serial.print("🔌 Connecting MQTT... ");
-
-    String cid = "ESP32_SAFE_" + String(random(0xffff), HEX);
 
     if (mqtt.connect(cid.c_str())) {
       Serial.println("connected");
@@ -245,6 +257,7 @@ void connectMQTT() {
     }
   }
 }
+
 
 /* ========= SETUP ========= */
 void setup() {
@@ -305,7 +318,8 @@ void setup() {
   mqtt.setCallback(mqttCallback);
 
   // --- LED PWM ---
-  ledcAttach(LED_PIN, 5000, 8);   // pin, freq, resolution
+ledcSetup(0, 5000, 8);   // channel 0, freq 5kHz, 8-bit
+ledcAttachPin(LED_PIN, 0);
 }
 
 
@@ -334,26 +348,39 @@ void loop() {
 long left = secondsUntilUnlock();
 
 if(pulseActive){
-  ledcWrite(LED_PIN, 255);   // דלוק חזק בזמן פתיחה
+    ledcWrite(LED_PIN, 255);   // דלוק חזק בזמן פתיחה
 }
 else if(hasLockTime && left > 0){
 
-  if(left > 1800){
-    // יותר מ-30 דקות -> כבוי
-    ledcWrite(LED_PIN, 0);
-  }
-  else if(left > 600){
-    // 30 דקות אחרונות -> נשימה איטית
-    updateBreathingLED(40);
-  }
-  else{
-    // 10 דקות אחרונות -> נשימה מהירה
-    updateBreathingLED(10);
-  }
+    if(left > 1800){ 
+        // יותר מ-30 דקות -> כבוי
+        ledcWrite(LED_PIN, 0);
+    }
+    else if(left > 600){
+        // 30-10 דקות -> נשימה מהירה
+        updateBreathingLED(30); // נשימה איטית יחסית (אפשר לשחק ב-interval)
+    }
+    else{
+        // 10 דקות האחרונות -> פימפום מהיר
+        // נצבע 0 או 255 כל פעם להרגשת פימפום
+        if(millis() - lastLedUpdate >= 50){  // פימפום מהיר
+            lastLedUpdate = millis();
+            ledBrightness = (ledBrightness == 0) ? 255 : 0;
+            ledcWrite(LED_PIN, ledBrightness);
+        }
+    }
 
 }
 else{
-  // הזמן נגמר או אין נעילה -> דלוק קבוע
-  ledcWrite(LED_PIN, 255);
+    // הזמן נגמר או אין נעילה -> דלוק קבוע
+    ledcWrite(LED_PIN, 255);
+}
+
+
+bool stateOn = pulseActive || digitalRead(PIN15) == HIGH;
+
+if(stateOn != lastStateOn){
+    lastStateOn = stateOn;
+    mqtt.publish(TOPIC_CMD, stateOn ? "ESP_ON" : "ESP_OFF");
 }
 }
