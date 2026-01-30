@@ -1,5 +1,5 @@
 /* ================= LOGIC FOR RECENT TIMERS ================= */
-const logListEl = document.getElementById("logList");
+const logListElTimers = document.getElementById("logList");
 const LOG_STORAGE_KEY = "recentTimers";
 const MAX_LOG = 20;
 
@@ -45,15 +45,15 @@ function addTimerLog(durationMs) {
 function renderLogs() {
   const logs = loadLogs();
   if (!logs.length) {
-    logListEl.innerHTML = "אין נתונים עדיין";
+    logListElTimers.innerHTML = "אין נתונים עדיין";
     return;
   }
 
-  logListEl.innerHTML = "";
+  logListElTimers.innerHTML = "";
   logs.forEach(log => {
     const div = document.createElement("div");
     div.textContent = log.display;
-    logListEl.appendChild(div);
+    logListElTimers.appendChild(div);
   });
 }
 
