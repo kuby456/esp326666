@@ -318,8 +318,7 @@ void setup() {
   mqtt.setCallback(mqttCallback);
 
   // --- LED PWM ---
-ledcSetup(0, 5000, 8);   // channel 0, freq 5kHz, 8-bit
-ledcAttachPin(LED_PIN, 0);
+ledcAttach(LED_PIN, 5000, 8);
 }
 
 
