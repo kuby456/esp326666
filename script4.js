@@ -1,41 +1,79 @@
-// ===== שליחת OPEN =====
+/* ========= MQTT STATE ========= */
+let mqttReady = false;
+
+/* ========= STATUS UI ========= */
+function setStatus(text, ok){
+  console.log("📡 STATUS:", text);
+  // אם יש לך באנר / UI – כאן לעדכן
+}
+
+/* ========= MQTT EVENTS ========= */
+client.on("connect", () => {
+  mqttReady = true;
+  setStatus("מחובר", true);
+  console.log("✅ MQTT CONNECTED");
+});
+
+client.on("reconnect", () => {
+  mqttReady = false;
+  setStatus("מתחבר מחדש…", false);
+  console.log("🔄 MQTT RECONNECTING");
+});
+
+client.on("offline", () => {
+  mqttReady = false;
+  setStatus("מנותק", false);
+  console.log("📴 MQTT OFFLINE");
+});
+
+client.on("close", () => {
+  mqttReady = false;
+  setStatus("החיבור נסגר", false);
+  console.log("❌ MQTT CLOSED");
+});
+
+client.on("error", err => {
+  console.log("🔥 MQTT ERROR:", err.message);
+});
+
+
+/* ========= HELPER: publish when ready ========= */
+function publishWhenReady(topic, payload){
+  if (mqttReady) {
+    client.publish(topic, payload);
+    console.log("📤 MQTT ->", payload);
+    return;
+  }
+
+  console.warn("⏳ MQTT not ready, waiting to send:", payload);
+
+  client.once("connect", () => {
+    client.publish(topic, payload);
+    console.log("📤 MQTT ->", payload, "(after connect)");
+  });
+}
+
+/* ========= OPEN COMMAND ========= */
 function sendCommandIfAllowed(){
 
   const fireBtn = document.getElementById("fireBtn");
   fireBtn.disabled = true;
-  fireBtn.classList.add("disabled");
 
-  if(!client || !client.connected){
-    alert("אין חיבור לשרת MQTT");
+  publishWhenReady(TOPIC_CMD, "OPEN");
+
+  setTimeout(() => {
     fireBtn.disabled = false;
-    fireBtn.classList.remove("disabled");
-    return;
-  }
-
-  client.publish(TOPIC_CMD, "OPEN");
-  console.log("📤 MQTT -> OPEN");
-
-  setTimeout(()=>{
-    fireBtn.disabled = false;
-    fireBtn.classList.remove("disabled");
   }, 500);
 }
 
-
-// ===== שליחת LOCK לפי הטיימר =====
+/* ========= LOCK FROM TIMER ========= */
 function sendLockFromTimer(){
 
-  if(!client || !client.connected){
-    alert("אין חיבור ל-MQTT");
-    return;
-  }
+  const h = Number(document.getElementById("hours").value)   || 0;
+  const m = Number(document.getElementById("minutes").value) || 0;
+  const s = Number(document.getElementById("seconds").value) || 0;
 
-  const h = parseInt(document.getElementById("hours").value);
-  const m = parseInt(document.getElementById("minutes").value);
-  const s = parseInt(document.getElementById("seconds").value);
-
-  // לא לאפשר נעילה של 0
-  if(h === 0 && m === 0 && s === 0){
+  if (h === 0 && m === 0 && s === 0) {
     alert("בחר זמן לנעילה");
     return;
   }
@@ -43,14 +81,13 @@ function sendLockFromTimer(){
   const now = new Date();
   const unlock = new Date(now.getTime() + (h*3600 + m*60 + s)*1000);
 
-  const hh = String(unlock.getHours()).padStart(2, '0');
-  const mm = String(unlock.getMinutes()).padStart(2, '0');
-  const ss = String(unlock.getSeconds()).padStart(2, '0');
+  const hh = String(unlock.getHours()).padStart(2, "0");
+  const mm = String(unlock.getMinutes()).padStart(2, "0");
+  const ss = String(unlock.getSeconds()).padStart(2, "0");
 
   const msg = `LOCK:${hh}:${mm}:${ss}`;
 
-  client.publish(TOPIC_CMD, msg);
-  console.log("📤 MQTT ->", msg);
+  publishWhenReady(TOPIC_CMD, msg);
 }
 
-
+console.log("🚀 MQTT logic loaded");
