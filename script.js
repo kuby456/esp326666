@@ -199,14 +199,23 @@ function startBannerCountdown(bg){
     }
   },1000);
 }
-
-/* ================= MAIN TIMER ================= */
 function startMainTimer(ms){
   clearInterval(tickTimer);
   lockTimeSelect(true);
 
   totalMs = ms;
   endTime = Date.now() + ms;
+
+  // 🔐 שליחת נעילה ל-ESP
+  const d = new Date(endTime);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+
+  const msg = `LOCK:${hh}:${mm}:${ss}`;
+  publishWhenReady(TOPIC_CMD, msg);
+
+  console.log("🔐 LOCK SENT TO ESP:", msg);
 
   saveTimer();
 
