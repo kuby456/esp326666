@@ -1,11 +1,7 @@
 /* ========= MQTT STATE ========= */
-let mqttReady = false;
+const runText = document.getElementById("runText"); // או מה שזה לא יהיה
 
-/* ========= STATUS UI ========= */
-function setStatus(text, ok){
-  console.log("📡 STATUS:", text);
-  // אם יש לך באנר / UI – כאן לעדכן
-}
+let mqttReady = false;
 
 /* ========= MQTT EVENTS ========= */
 client.on("connect", () => {
