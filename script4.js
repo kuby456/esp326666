@@ -37,21 +37,7 @@ client.on("error", err => {
 });
 
 
-/* ========= HELPER: publish when ready ========= */
-function publishWhenReady(topic, payload){
-  if (mqttReady) {
-    client.publish(topic, payload);
-    console.log("📤 MQTT ->", payload);
-    return;
-  }
 
-  console.warn("⏳ MQTT not ready, waiting to send:", payload);
-
-  client.once("connect", () => {
-    client.publish(topic, payload);
-    console.log("📤 MQTT ->", payload, "(after connect)");
-  });
-}
 
 /* ========= OPEN COMMAND ========= */
 function sendCommandIfAllowed(){
@@ -64,6 +50,15 @@ function sendCommandIfAllowed(){
   setTimeout(() => {
     fireBtn.disabled = false;
   }, 500);
+}
+
+function publishWhenReady(topic, payload){
+  if (client.connected) {
+    client.publish(topic, payload);
+    console.log("📤 MQTT ->", payload);
+  } else {
+    console.warn("❌ MQTT not connected, drop:", payload);
+  }
 }
 
 /* ========= LOCK FROM TIMER ========= */
